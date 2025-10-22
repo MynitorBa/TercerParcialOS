@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Delivery - STM32</title>
+    <link rel="icon" type="image/png" href="REPARTIDOR.png">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- Contenedor de notificaciones -->
+    <div id="notificationContainer" class="notification-container"></div>
+    
+    <div class="container">
+        
+        <!-- Cabecera con título y estado -->
+        <div class="header">
+            <h1>SISTEMA DE DELIVERY</h1>
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                <span id="statusText">Esperando STM32...</span>
+            </div>
+        </div>
+
+        <!-- Seguimiento de pedidos en tiempo real -->
+        <div class="tracking-section">
+            <h2 class="section-title-main">ESTADO DE PEDIDOS EN TIEMPO REAL</h2>
+            
+            <div class="tracking-grid">
+                <!-- Pedidos en preparación -->
+                <div class="tracking-column">
+                    <div class="tracking-column-header preparing">
+                        <span class="status-icon">👨‍🍳</span>
+                        <span>Preparando</span>
+                    </div>
+                    <div class="tracking-cards" id="trackingPreparing"></div>
+                </div>
+
+                <!-- Pedidos listos -->
+                <div class="tracking-column">
+                    <div class="tracking-column-header ready">
+                        <span class="status-icon">✅</span>
+                        <span>Listos</span>
+                    </div>
+                    <div class="tracking-cards" id="trackingReady"></div>
+                </div>
+
+                <!-- Pedidos en camino -->
+                <div class="tracking-column">
+                    <div class="tracking-column-header delivering">
+                        <span class="status-icon">🚚</span>
+                        <span>En Ruta</span>
+                    </div>
+                    <div class="tracking-cards" id="trackingDelivering"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zona de mapas y controles -->
+        <div class="main-grid">
+            
+            <!-- Mapas pequeños izquierda -->
+            <div class="left-column">
+                <!-- Mapa de edificios -->
+                <div class="small-map-container">
+                    <div class="map-title-small">Edificios</div>
+                    <canvas id="map1Canvas"></canvas>
+                </div>
+                <!-- Mapa de repartidores -->
+                <div class="small-map-container">
+                    <div class="map-title-small">Repartidores</div>
+                    <canvas id="map2Canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Mapa principal -->
+            <div class="center-column">
+                <div class="map-section-main">
+                    <div class="map-title-main">MAPA COMPLETO - Selecciona Restaurante y Casa</div>
+                    <div class="canvas-wrapper-main">
+                        <canvas id="map3Canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de cancelación -->
+            <div class="cancel-orders-column">
+                <div class="cancel-orders-panel">
+                    <h2 class="cancel-panel-title">Cancelar Pedidos</h2>
+                    
+                    <div class="cancel-orders-table" id="cancelOrdersTable">
+                        <div class="cancel-orders-empty">
+                            <div class="cancel-orders-empty-icon">📋</div>
+                            <p>Sin pedidos activos</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de creación de pedidos -->
+            <div class="right-column">
+                <div class="order-panel">
+                    <h2 class="panel-title">Crear Pedido</h2>
+                    
+                    <!-- Selector de restaurante -->
+                    <div class="location-display" id="restaurantDisplay">
+                        <div class="location-placeholder">
+                            <p>Clic en Restaurante (R)</p>
+                        </div>
+                    </div>
+
+                    <!-- Menú del restaurante -->
+                    <div class="menu-section" id="menuSection">
+                        <h3>Menú Disponible</h3>
+                        <div class="menu-disabled" id="menuDisabled">
+                            <span class="menu-disabled-icon">🍽️</span>
+                            <p>Selecciona un restaurante</p>
+                        </div>
+                        <div class="menu-grid" id="menuGrid" style="display: none;"></div>
+                    </div>
+
+                    <!-- Selector de casa -->
+                    <div class="location-display" id="houseDisplay">
+                        <div class="location-placeholder">
+                            <p>Clic en Casa (H)</p>
+                        </div>
+                    </div>
+
+                    <!-- Botón crear pedido -->
+                    <button class="btn-create-order" id="btnCreateOrder" disabled>
+                        Crear Pedido
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tablas de información -->
+        <div class="info-tables-section">
+            <h2 class="info-tables-title">INFORMACIÓN DEL SISTEMA</h2>
+            
+            <div class="info-tables-grid">
+                
+                <!-- Tabla de repartidores -->
+                <div class="info-table-container">
+                    <h3 class="info-table-title">Repartidores</h3>
+                    <div class="info-table-wrapper">
+                        <table class="info-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Posición</th>
+                                    <th>Estado</th>
+                                    <th>Pedidos</th>
+                                </tr>
+                            </thead>
+                            <tbody id="repartidoresTableBody">
+                                <tr class="info-empty">
+                                    <td colspan="4">Sin repartidores</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabla de restaurantes -->
+                <div class="info-table-container">
+                    <h3 class="info-table-title">Restaurantes</h3>
+                    <div class="info-table-wrapper">
+                        <table class="info-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Posición</th>
+                                    <th>Algoritmo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="restaurantesTableBody">
+                                <tr class="info-empty">
+                                    <td colspan="4">Sin restaurantes</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabla de casas -->
+                <div class="info-table-container">
+                    <h3 class="info-table-title">Casas</h3>
+                    <div class="info-table-wrapper">
+                        <table class="info-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Posición</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="casasTableBody">
+                                <tr class="info-empty">
+                                    <td colspan="4">Sin casas</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de métricas -->
+        <div class="metrics-section">
+            <h2 class="metrics-title">ANÁLISIS DE RENDIMIENTO</h2>
+            
+            <!-- Resumen de métricas -->
+            <div class="metrics-summary-grid">
+                <!-- Tiempo en espera de cocina -->
+                <div class="metric-card">
+                    <div class="metric-header">Espera Cocina</div>
+                    <div class="metric-values">
+                        <div class="metric-value">
+                            <span class="metric-label">AVG</span>
+                            <span class="metric-number" id="metric-avg-queue">0.0s</span>
+                        </div>
+                        <div class="metric-divider"></div>
+                        <div class="metric-value">
+                            <span class="metric-label">P50</span>
+                            <span class="metric-number" id="metric-p50-queue">0.0s</span>
+                        </div>
+                        <div class="metric-divider"></div>
+                        <div class="metric-value">
+                            <span class="metric-label">P90</span>
+                            <span class="metric-number" id="metric-p90-queue">0.0s</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tiempo de preparación -->
+                <div class="metric-card">
+                    <div class="metric-header">Preparación</div>
+                    <div class="metric-values">
+                        <div class="metric-value">
+                            <span class="metric-label">AVG</span>
+                            <span class="metric-number" id="metric-avg-prep">0.0s</span>
+                        </div>
+                        <div class="metric-divider"></div>
+                        <div class="metric-value">
+                            <span class="metric-label">P50</span>
+                            <span class="metric-number" id="metric-p50-prep">0.0s</span>
+                        </div>
+                        <div class="metric-divider"></div>
+                        <div class="metric-value">
+                            <span class="metric-label">P90</span>
+                            <span class="metric-number" id="metric-p90-prep">0.0s</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tiempo esperando motorista -->
+                <div class="metric-card">
+                    <div class="metric-header">Espera Motorista</div>
+                    <div class="metric-values">
+                        <div class="metric-value">
+                            <span class="metric-label">AVG</span>
+                            <span class="metric-number" id="metric-avg-wait">0.0s</span>
+                        </div>
+                        <div class="metric-divider"></div>
+                        <div class="metric-value">
+                            <span class="metric-label">P50</span>
+                            <span class="metric-number" id="metric-p50-wait">0.0s</span>
+                        </div>
+                        <div class="metric-divider"></div>
+                        <div class="metric-value">
+                            <span class="metric-label">P90</span>
+                            <span class="metric-number" id="metric-p90-wait">0.0s</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tiempo de entrega -->
+                <div class="metric-card">
+                    <div class="metric-header">Entrega</div>
+                    <div class="metric-values">
+                        <div class="metric-value">
+                            <span class="metric-label">AVG</span>
+                            <span class="metric-number" id="metric-avg-drive">0.0s</span>
+                        </div>
+                        <div class="metric-divider"></div>
+                        <div class="metric-value">
+                            <span class="metric-label">P50</span>
+                            <span class="metric-number" id="metric-p50-drive">0.0s</span>
+                        </div>
+                        <div class="metric-divider"></div>
+                        <div class="metric-value">
+                            <span class="metric-label">P90</span>
+                            <span class="metric-number" id="metric-p90-drive">0.0s</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tiempo total -->
+                <div class="metric-card metric-card-total">
+                    <div class="metric-header">TIEMPO TOTAL</div>
+                    <div class="metric-values">
+                        <div class="metric-value">
+                            <span class="metric-label">AVG</span>
+                            <span class="metric-number" id="metric-avg-total">0.0s</span>
+                        </div>
+                        <div class="metric-divider"></div>
+                        <div class="metric-value">
+                            <span class="metric-label">P50</span>
+                            <span class="metric-number" id="metric-p50-total">0.0s</span>
+                        </div>
+                        <div class="metric-divider"></div>
+                        <div class="metric-value">
+                            <span class="metric-label">P90</span>
+                            <span class="metric-number" id="metric-p90-total">0.0s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico de barras -->
+            <div class="metrics-chart">
+                <h3 class="chart-title">Últimos 10 Pedidos Entregados</h3>
+                <div class="chart-container">
+                    <canvas id="metricsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Tabla detalle de pedidos -->
+            <h3 class="table-title">Detalle de Pedidos</h3>
+            <div class="metrics-table-container">
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Recibo</th>
+                            <th>Espera Cocina</th>
+                            <th>Preparación</th>
+                            <th>Espera Motorista</th>
+                            <th>Entrega</th>
+                            <th>TOTAL</th>
+                        </tr>
+                    </thead>
+                    <tbody id="metricsTableBody">
+                        <tr class="table-empty">
+                            <td colspan="6">Sin datos</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Análisis detallado -->
+        <div class="additional-charts-section">
+            <h2 class="additional-charts-title">ANÁLISIS DETALLADO POR ENTIDAD</h2>
+            
+            <!-- Gráficos de repartidores -->
+            <div class="charts-grid-two">
+                <div class="chart-container-wrapper">
+                    <h3 class="chart-subtitle">Tiempo Pickup Repartidores</h3>
+                    <div class="chart-box">
+                        <canvas id="driverPickupChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container-wrapper">
+                    <h3 class="chart-subtitle">Tiempo Total Repartidores</h3>
+                    <div class="chart-box">
+                        <canvas id="driverTotalChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Gráficos de restaurantes y casas -->
+            <div class="charts-grid-two">
+                <div class="chart-container-wrapper">
+                    <h3 class="chart-subtitle">Tiempo Preparación Restaurantes</h3>
+                    <div class="chart-box">
+                        <canvas id="restaurantPrepChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container-wrapper">
+                    <h3 class="chart-subtitle">Tiempo Entrega Casas</h3>
+                    <div class="chart-box">
+                        <canvas id="houseDeliveryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tabla de entregas por casa -->
+            <h3 class="table-title">Detalle Entregas por Casa</h3>
+            <div class="metrics-table-container">
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Casa</th>
+                            <th>Recibo</th>
+                            <th>Tiempo Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="houseDeliveryTableBody">
+                        <tr class="table-empty">
+                            <td colspan="3">Sin datos</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Tabla pickup por motorista -->
+            <h3 class="table-title">Detalle Pickup por Motorista</h3>
+            <div class="metrics-table-container">
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Motorista</th>
+                            <th>Recibo</th>
+                            <th>Tiempo Pickup</th>
+                        </tr>
+                    </thead>
+                    <tbody id="driverPickupTableBody">
+                        <tr class="table-empty">
+                            <td colspan="3">Sin datos</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Tabla entrega por motorista -->
+            <h3 class="table-title">Detalle Entrega por Motorista</h3>
+            <div class="metrics-table-container">
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Motorista</th>
+                            <th>Recibo</th>
+                            <th>Tiempo Entrega</th>
+                        </tr>
+                    </thead>
+                    <tbody id="driverTotalTableBody">
+                        <tr class="table-empty">
+                            <td colspan="3">Sin datos</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Tabla preparación por restaurante -->
+            <h3 class="table-title">Detalle Preparación por Restaurante</h3>
+            <div class="metrics-table-container">
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Restaurante</th>
+                            <th>Recibo</th>
+                            <th>Tiempo Preparación</th>
+                        </tr>
+                    </thead>
+                    <tbody id="restaurantPrepTableBody">
+                        <tr class="table-empty">
+                            <td colspan="3">Sin datos</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+        </div>
+
+        <!-- Gestión de platillos -->
+        <div class="restaurant-dishes-section">
+            <h2 class="restaurant-dishes-title">📊 GESTIÓN DE PLATILLOS POR RESTAURANTE</h2>
+            
+            <div class="dishes-charts-grid">
+                <!-- Total de platillos -->
+                <div class="dishes-chart-container">
+                    <h3 class="dishes-chart-title">Total Platillos por Restaurante</h3>
+                    <div class="dishes-chart-box">
+                        <canvas id="totalDishesChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Platillos pendientes -->
+                <div class="dishes-chart-container">
+                    <h3 class="dishes-chart-title">Platillos Pendientes por Restaurante</h3>
+                    <div class="dishes-chart-box">
+                        <canvas id="pendingDishesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ranking de repartidores -->
+        <div class="scoreboard-section">
+            <h2 class="scoreboard-title">🏆 RANKING DE REPARTIDORES</h2>
+            
+            <div class="scoreboard-table-container">
+                <table class="scoreboard-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Puntos</th>
+                        </tr>
+                    </thead>
+                    <tbody id="driverScoreTableBody">
+                        <tr class="table-empty">
+                            <td colspan="3">Sin datos</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Histórico de eventos -->
+        <div class="history-section">
+            <h2 class="history-title">HISTÓRICO DE EVENTOS</h2>
+            
+            <!-- Controles -->
+            <div class="history-controls">
+                <div class="history-info">
+                    Últimos <span id="historyCount">0</span> eventos
+                </div>
+                <button class="btn-clear-history" onclick="clearHistory()">
+                    Limpiar Histórico
+                </button>
+            </div>
+            
+            <!-- Tabla de eventos -->
+            <div class="history-table-container">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Hora</th>
+                            <th>Evento</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <tr class="history-empty">
+                            <td colspan="2">Sin eventos registrados</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio de fondo -->
+    <audio id="backgroundMusic" loop>
+        <source src="warrior.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Botón de música -->
+    <button id="musicToggle" class="music-toggle-btn" title="Activar/Desactivar Música">
+        🔇
+    </button>
+
+    <!-- Scripts -->
+    <script src="render.js"></script>
+    <script src="serial.js"></script>
+    <script src="app.js"></script>
+    <script src="metrics.js"></script>
+    <script src="history.js"></script>
+    
+    <script>
+        // Iniciar música al hacer clic
+        document.addEventListener('click', () => {
+            const music = document.getElementById('backgroundMusic');
+            if (music.paused) {
+                music.play().catch(e => console.log('Audio bloqueado por navegador'));
+            }
+        }, { once: true });
+    </script>
+</body>
+</html>
