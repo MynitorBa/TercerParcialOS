@@ -1,6 +1,6 @@
 COMO CORRER EL PROYECTO:
 
-Para ejecutar el proyecto, la parte correspondiente al STM32 utiliza FreeRTOS, por lo que es necesario colocar el código dentro del archivo freertos.c y realizar el Build del proyecto antes de ejecutarlo en la placa. Esto pondrá en funcionamiento las tareas encargadas de la gestión de pedidos, comunicación UART y sincronización del sistema.
+El repositorio cuenta con dos carpetas, en la de "APLICACIÓN WEB" se encuentra todos los archivos necesarios para la app web, por otro lado dentro de "FreeRTOS_Blink_Concurrente" se encuentra todo el proyecto de la placa STM32, donde el archivo más importante es el de freertos.c, para correr el archivo de la placa se debe importar el proyecto en STM32CubeIDE (El de "FreeRTOS_Blink_Concurrente"). Para correrlo primeramente se debe ir al proyecto dentro del IDE, darle clic derecho para luego clickear Build Project, luego se debe dar Debug As, con la configuración predeterminada que utilice su placa, y debería dar Switch, tras esto, se tiene que correr el porgrama normalmente.
 
 Por otro lado, para ejecutar la aplicación web, se deben instalar las librerías necesarias desde la terminal de Node.js utilizando los siguientes comandos:
 
